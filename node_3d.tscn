@@ -1,5 +1,116 @@
-[gd_scene format=3 uid="uid://dksjtmj8ri06q"]
+[gd_scene load_steps=9 format=3 uid="uid://dksjtmj8ri06q"]
+
+[ext_resource type="Script" uid="uid://bkjjfbu5sh2vb" path="res://player.gd" id="1_a202f"]
+
+[sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_a202f"]
+sky_horizon_color = Color(0.662243, 0.671743, 0.686743, 1)
+ground_horizon_color = Color(0.662243, 0.671743, 0.686743, 1)
+
+[sub_resource type="Sky" id="Sky_noarx"]
+sky_material = SubResource("ProceduralSkyMaterial_a202f")
+
+[sub_resource type="Environment" id="Environment_a0tk4"]
+background_mode = 2
+sky = SubResource("Sky_noarx")
+tonemap_mode = 2
+glow_enabled = true
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_noarx"]
+
+[sub_resource type="CapsuleMesh" id="CapsuleMesh_a0tk4"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_a202f"]
+
+[sub_resource type="BoxMesh" id="BoxMesh_noarx"]
 
 [node name="Node3D" type="Node3D"]
 
-[node name="CSGBox3D" type="CSGBox3D" parent="."]
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_a0tk4")
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
+transform = Transform3D(-0.78152, -0.576805, 0.237742, 0, 0.38107, 0.924546, -0.62388, 0.722552, -0.297814, 0, 0, 0)
+shadow_enabled = true
+
+[node name="Player" type="CharacterBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.10305, -0.206777, -2.81183)
+script = ExtResource("1_a202f")
+speed = 10.0
+mouse_sensitivity = 0.3
+
+[node name="Camera3D" type="Camera3D" parent="Player"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.618914, 0.0217127)
+current = true
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Player"]
+shape = SubResource("CapsuleShape3D_noarx")
+debug_color = Color(0, 0.557703, 0.895704, 0.42)
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Player"]
+mesh = SubResource("CapsuleMesh_a0tk4")
+
+[node name="Sol" type="StaticBody3D" parent="."]
+transform = Transform3D(50, 0, 0, 0, 1, 0, 0, 0, 50, 2.20259, -1.97703, 0)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Sol"]
+shape = SubResource("BoxShape3D_a202f")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Sol"]
+transform = Transform3D(1.0052, 0, 0, 0, 1.0052, 0, 0, 0, 1.0052, 0, 0, 0)
+gi_lightmap_texel_scale = 2.2252
+mesh = SubResource("BoxMesh_noarx")
+
+[node name="Sol2" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 25, 0, 0, 0, 1, 11.8228, 10.1137, -10.5659)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Sol2"]
+shape = SubResource("BoxShape3D_a202f")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Sol2"]
+transform = Transform3D(1.0052, 0, 0, 0, 1.0052, 0, 0, 0, 1.0052, 0, 0, 0)
+gi_lightmap_texel_scale = 2.2252
+mesh = SubResource("BoxMesh_noarx")
+
+[node name="Sol3" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 25, 0, 0, 0, 1, 11.6484, 10.0598, 13.7237)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Sol3"]
+shape = SubResource("BoxShape3D_a202f")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Sol3"]
+transform = Transform3D(1.0052, 0, 0, 0, 1.0052, 0, 0, 0, 1.0052, 0, 0, 0)
+gi_lightmap_texel_scale = 2.2252
+mesh = SubResource("BoxMesh_noarx")
+
+[node name="Sol4" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 25, 0, 0, 0, 1, -14.5326, 10.0598, 13.7237)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Sol4"]
+shape = SubResource("BoxShape3D_a202f")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Sol4"]
+transform = Transform3D(1.0052, 0, 0, 0, 1.0052, 0, 0, 0, 1.0052, 0, 0, 0)
+gi_lightmap_texel_scale = 2.2252
+mesh = SubResource("BoxMesh_noarx")
+
+[node name="Sol5" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 25, 0, 0, 0, 1, -13.3523, 10.0598, -5.68279)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Sol5"]
+shape = SubResource("BoxShape3D_a202f")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Sol5"]
+transform = Transform3D(1.0052, 0, 0, 0, 1.0052, 0, 0, 0, 1.0052, 0, 0, 0)
+gi_lightmap_texel_scale = 2.2252
+mesh = SubResource("BoxMesh_noarx")
+
+[node name="Sol6" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 5.34184, 0, 0, 0, 23.0361, 11.611, 2.69679, 1.91584)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Sol6"]
+shape = SubResource("BoxShape3D_a202f")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Sol6"]
+transform = Transform3D(1.0052, 0, 0, 0, 1.0052, 0, 0, 0, 1.0052, 0, 0, 0)
+gi_lightmap_texel_scale = 2.2252
+mesh = SubResource("BoxMesh_noarx")
