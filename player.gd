@@ -90,7 +90,7 @@ func _physics_process(delta):
 	# Animation douce caméra
 	$Camera3D.position.y = lerp($Camera3D.position.y, camera_target_y, 0.2)
 
-	# Placement avancé de l'objet porté (shape cast et mémorisation dernière position valide)
+	# Placement direct de l'objet porté (pas de LERP, placement instantané sur anchor)
 	if carried_object:
 		var anchor_pos = $Camera3D/CarryAnchor.global_transform.origin
 		var space_state = get_world_3d().direct_space_state
@@ -105,11 +105,11 @@ func _physics_process(delta):
 				shape_query.exclude = [self, carried_object]
 				var collisions = space_state.intersect_shape(shape_query)
 				if collisions.size() == 0:
-					# Aucun obstacle, avance vers l'anchor et mémorise cette position
-					carried_object.global_transform.origin = carried_object.global_transform.origin.lerp(anchor_pos, 0.5)
-					carried_object_last_valid_pos = carried_object.global_transform.origin
+					# Aucun obstacle, place INSTANTANÉMENT à l'anchor et mémorise cette position
+					carried_object.global_transform.origin = anchor_pos
+					carried_object_last_valid_pos = anchor_pos
 				else:
-					# Collision : reste parfaitement à la dernière position valide
+					# Collision : reste exactement à la dernière position valide
 					carried_object.global_transform.origin = carried_object_last_valid_pos
 				carried_object.global_transform.basis = Basis()
 				carried_object.linear_velocity = Vector3.ZERO
@@ -118,8 +118,8 @@ func _physics_process(delta):
 				break
 
 		if not found_shape:
-			carried_object.global_transform.origin = carried_object.global_transform.origin.lerp(anchor_pos, 0.5)
-			carried_object_last_valid_pos = carried_object.global_transform.origin
+			carried_object.global_transform.origin = anchor_pos
+			carried_object_last_valid_pos = anchor_pos
 			carried_object.global_transform.basis = Basis()
 			carried_object.linear_velocity = Vector3.ZERO
 			carried_object.angular_velocity = Vector3.ZERO
