@@ -16,6 +16,7 @@ var camera_target_y := stand_camera_y
 
 var carried_object : RigidBody3D = null
 var carried_object_last_valid_pos : Vector3
+var is_rotating_object := false
 
 func _ready():
 	Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
@@ -23,15 +24,39 @@ func _ready():
 
 func _input(event):
 	if event is InputEventMouseMotion:
-		rotate_y(-event.relative.x * mouse_sensitivity * 0.01)
-		rotation_x -= event.relative.y * mouse_sensitivity * 0.01
-		rotation_x = clamp(rotation_x, deg_to_rad(-90), deg_to_rad(90))
-		$Camera3D.rotation.x = rotation_x
+		if is_rotating_object and carried_object:
+			# Tourne l'objet avec la souris (ajuste le facteur pour la vitesse)
+			var rot_x = -event.relative.x * 0.01
+			var rot_y = -event.relative.y * 0.01
+			# Rotation autour de Y (axe vertical), puis X (latéral)
+			var basis = carried_object.global_transform.basis
+			basis = Basis(Vector3.UP, rot_x) * basis
+			basis = Basis(Vector3.RIGHT, rot_y) * basis
+			carried_object.global_transform.basis = basis
+		else:
+			# Mouvement caméra normal
+			rotate_y(-event.relative.x * mouse_sensitivity * 0.01)
+			rotation_x -= event.relative.y * mouse_sensitivity * 0.01
+			rotation_x = clamp(rotation_x, deg_to_rad(-90), deg_to_rad(90))
+			$Camera3D.rotation.x = rotation_x
 
+	# Clic gauche pour mode rotation objet
+	if event is InputEventMouseButton:
+		if event.button_index == MOUSE_BUTTON_LEFT:
+			if event.pressed and carried_object:
+				is_rotating_object = true
+				Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
+			elif not event.pressed:
+				is_rotating_object = false
+				Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
+
+	# Portage objet (E)
 	if event.is_action_pressed("interact"):
 		if carried_object:
-			carried_object.set("mode", 0) # 0 = RIGID
+			carried_object.set("mode", 0) # RIGID
 			carried_object = null
+			is_rotating_object = false
+			Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
 		else:
 			var from = $Camera3D.global_transform.origin
 			var to = from + -$Camera3D.global_transform.basis.z * carry_range
@@ -42,7 +67,7 @@ func _input(event):
 			var result = space_state.intersect_ray(query)
 			if result and result.collider is RigidBody3D:
 				carried_object = result.collider
-				carried_object.set("mode", 2) # 2 = KINEMATIC
+				carried_object.set("mode", 2)
 				carried_object_last_valid_pos = carried_object.global_transform.origin
 
 func set_crouch(state : bool):
@@ -90,7 +115,7 @@ func _physics_process(delta):
 	# Animation douce caméra
 	$Camera3D.position.y = lerp($Camera3D.position.y, camera_target_y, 0.2)
 
-	# Placement direct de l'objet porté (pas de LERP, placement instantané sur anchor)
+	# Placement direct de l'objet porté
 	if carried_object:
 		var anchor_pos = $Camera3D/CarryAnchor.global_transform.origin
 		var space_state = get_world_3d().direct_space_state
@@ -100,18 +125,15 @@ func _physics_process(delta):
 			if c is CollisionShape3D and c.shape is BoxShape3D:
 				var shape_query = PhysicsShapeQueryParameters3D.new()
 				shape_query.shape = c.shape
-				shape_query.transform = Transform3D(Basis(), anchor_pos)
+				shape_query.transform = Transform3D(carried_object.global_transform.basis, anchor_pos)
 				shape_query.collision_mask = carried_object.collision_mask
 				shape_query.exclude = [self, carried_object]
 				var collisions = space_state.intersect_shape(shape_query)
 				if collisions.size() == 0:
-					# Aucun obstacle, place INSTANTANÉMENT à l'anchor et mémorise cette position
 					carried_object.global_transform.origin = anchor_pos
 					carried_object_last_valid_pos = anchor_pos
 				else:
-					# Collision : reste exactement à la dernière position valide
 					carried_object.global_transform.origin = carried_object_last_valid_pos
-				carried_object.global_transform.basis = Basis()
 				carried_object.linear_velocity = Vector3.ZERO
 				carried_object.angular_velocity = Vector3.ZERO
 				found_shape = true
@@ -120,6 +142,5 @@ func _physics_process(delta):
 		if not found_shape:
 			carried_object.global_transform.origin = anchor_pos
 			carried_object_last_valid_pos = anchor_pos
-			carried_object.global_transform.basis = Basis()
 			carried_object.linear_velocity = Vector3.ZERO
 			carried_object.angular_velocity = Vector3.ZERO
