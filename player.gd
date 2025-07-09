@@ -8,10 +8,13 @@ extends CharacterBody3D
 
 @export var crouch_camera_y := 0.4
 @export var stand_camera_y := 0.8
+@export var carry_distance := 2.0
 
 var rotation_x := 0.0
 var is_crouched := false
 var camera_target_y := stand_camera_y
+
+var carried_object : RigidBody3D = null
 
 func _ready():
 	Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
@@ -24,13 +27,28 @@ func _input(event):
 		rotation_x = clamp(rotation_x, deg_to_rad(-90), deg_to_rad(90))
 		$Camera3D.rotation.x = rotation_x
 
+	if event.is_action_pressed("interact"):
+		if carried_object:
+			carried_object.set("mode", 0) # 0 = RIGID
+			carried_object = null
+		else:
+			var from = $Camera3D.global_transform.origin
+			var to = from + -$Camera3D.global_transform.basis.z * carry_distance
+			var space_state = get_world_3d().direct_space_state
+			var query = PhysicsRayQueryParameters3D.create(from, to)
+			query.collide_with_areas = false
+			var result = space_state.intersect_ray(query)
+			if result and result.collider is RigidBody3D:
+				carried_object = result.collider
+				carried_object.set("mode", 2) # 2 = KINEMATIC
+
 func set_crouch(state : bool):
 	is_crouched = state
 	$CollisionShape3D_Standing.disabled = state
 	$CollisionShape3D_Crouched.disabled = not state
 	camera_target_y = crouch_camera_y if state else stand_camera_y
 
-func _physics_process(_delta):
+func _physics_process(delta):
 	var direction = Vector3.ZERO
 	if Input.is_action_pressed("move_forward"):
 		direction -= transform.basis.z
@@ -44,6 +62,8 @@ func _physics_process(_delta):
 	direction = direction.normalized()
 
 	var current_speed = crouch_speed if is_crouched else speed
+	velocity.x = direction.x * current_speed
+	velocity.z = direction.z * current_speed
 
 	# Crouch logique avec RayCast3D plafond
 	if Input.is_action_pressed("crouch"):
@@ -51,14 +71,10 @@ func _physics_process(_delta):
 	elif is_crouched:
 		if not $RayCeiling.is_colliding():
 			set_crouch(false)
-		# sinon reste accroupi
-
-	velocity.x = direction.x * current_speed
-	velocity.z = direction.z * current_speed
 
 	# Gravité
 	if not is_on_floor():
-		velocity.y -= gravity * _delta
+		velocity.y -= gravity * delta
 	else:
 		velocity.y = 0.0
 
@@ -70,3 +86,9 @@ func _physics_process(_delta):
 
 	# Animation douce caméra
 	$Camera3D.position.y = lerp($Camera3D.position.y, camera_target_y, 0.2)
+
+	# Carry objet devant la caméra
+	if carried_object:
+		var target = $Camera3D/CarryAnchor.global_transform.origin
+		carried_object.global_transform.origin = carried_object.global_transform.origin.lerp(target, 0.5)
+		carried_object.global_transform.basis = Basis() # Fixe la rotation
