@@ -8,7 +8,7 @@ extends CharacterBody3D
 
 @export var crouch_camera_y := 0.4
 @export var stand_camera_y := 0.8
-@export var carry_distance := 2.0
+@export var carry_range := 3.0  # Distance max pour attraper un objet
 
 var rotation_x := 0.0
 var is_crouched := false
@@ -33,10 +33,11 @@ func _input(event):
 			carried_object = null
 		else:
 			var from = $Camera3D.global_transform.origin
-			var to = from + -$Camera3D.global_transform.basis.z * carry_distance
+			var to = from + -$Camera3D.global_transform.basis.z * carry_range
 			var space_state = get_world_3d().direct_space_state
 			var query = PhysicsRayQueryParameters3D.create(from, to)
 			query.collide_with_areas = false
+			query.exclude = [self] # Ignore le collider du joueur
 			var result = space_state.intersect_ray(query)
 			if result and result.collider is RigidBody3D:
 				carried_object = result.collider
@@ -91,4 +92,6 @@ func _physics_process(delta):
 	if carried_object:
 		var target = $Camera3D/CarryAnchor.global_transform.origin
 		carried_object.global_transform.origin = carried_object.global_transform.origin.lerp(target, 0.5)
-		carried_object.global_transform.basis = Basis() # Fixe la rotation
+		carried_object.global_transform.basis = Basis()
+		carried_object.linear_velocity = Vector3.ZERO
+		carried_object.angular_velocity = Vector3.ZERO

@@ -1,4 +1,4 @@
-[gd_scene load_steps=13 format=3 uid="uid://dksjtmj8ri06q"]
+[gd_scene load_steps=12 format=3 uid="uid://dksjtmj8ri06q"]
 
 [ext_resource type="Script" uid="uid://bkjjfbu5sh2vb" path="res://player.gd" id="1_a202f"]
 [ext_resource type="Script" uid="uid://tu26e2if28h8" path="res://Crosshair.gd" id="2_noarx"]
@@ -17,8 +17,6 @@ tonemap_mode = 2
 glow_enabled = true
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_noarx"]
-
-[sub_resource type="CapsuleMesh" id="CapsuleMesh_a0tk4"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_a202f"]
 height = 1.5
@@ -57,10 +55,6 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -2)
 [node name="CollisionShape3D_Standing" type="CollisionShape3D" parent="Player"]
 shape = SubResource("CapsuleShape3D_noarx")
 debug_color = Color(0, 0.557703, 0.895704, 0.42)
-
-[node name="MeshInstance3D" type="MeshInstance3D" parent="Player"]
-visible = false
-mesh = SubResource("CapsuleMesh_a0tk4")
 
 [node name="CollisionShape3D_Crouched" type="CollisionShape3D" parent="Player"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.24714, 0)
