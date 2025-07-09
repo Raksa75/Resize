@@ -11,6 +11,7 @@ extends CharacterBody3D
 
 var rotation_x := 0.0
 var is_crouched := false
+var camera_target_y := stand_camera_y
 
 func _ready():
 	Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
@@ -27,7 +28,7 @@ func set_crouch(state : bool):
 	is_crouched = state
 	$CollisionShape3D_Standing.disabled = state
 	$CollisionShape3D_Crouched.disabled = not state
-	$Camera3D.position.y = crouch_camera_y if state else stand_camera_y
+	camera_target_y = crouch_camera_y if state else stand_camera_y
 
 func _physics_process(_delta):
 	var direction = Vector3.ZERO
@@ -44,7 +45,7 @@ func _physics_process(_delta):
 
 	var current_speed = crouch_speed if is_crouched else speed
 
-	# Gestion crouch avec RayCast3D
+	# Crouch logique avec RayCast3D plafond
 	if Input.is_action_pressed("crouch"):
 		set_crouch(true)
 	elif is_crouched:
@@ -66,3 +67,6 @@ func _physics_process(_delta):
 		velocity.y = jump_velocity
 
 	move_and_slide()
+
+	# Animation douce caméra
+	$Camera3D.position.y = lerp($Camera3D.position.y, camera_target_y, 0.2)
