@@ -9,6 +9,7 @@ extends CharacterBody3D
 @export var crouch_camera_y := 0.4
 @export var stand_camera_y := 0.8
 @export var carry_range := 3.0  # Distance max pour attraper un objet
+@export var carry_break_distance := 4.0  # Distance max avant drop
 
 var rotation_x := 0.0
 var is_crouched := false
@@ -25,22 +26,18 @@ func _ready():
 func _input(event):
 	if event is InputEventMouseMotion:
 		if is_rotating_object and carried_object:
-			# Tourne l'objet avec la souris (ajuste le facteur pour la vitesse)
 			var rot_x = -event.relative.x * 0.01
 			var rot_y = -event.relative.y * 0.01
-			# Rotation autour de Y (axe vertical), puis X (latéral)
 			var basis = carried_object.global_transform.basis
 			basis = Basis(Vector3.UP, rot_x) * basis
 			basis = Basis(Vector3.RIGHT, rot_y) * basis
 			carried_object.global_transform.basis = basis
 		else:
-			# Mouvement caméra normal
 			rotate_y(-event.relative.x * mouse_sensitivity * 0.01)
 			rotation_x -= event.relative.y * mouse_sensitivity * 0.01
 			rotation_x = clamp(rotation_x, deg_to_rad(-90), deg_to_rad(90))
 			$Camera3D.rotation.x = rotation_x
 
-	# Clic gauche pour mode rotation objet
 	if event is InputEventMouseButton:
 		if event.button_index == MOUSE_BUTTON_LEFT:
 			if event.pressed and carried_object:
@@ -50,7 +47,6 @@ func _input(event):
 				is_rotating_object = false
 				Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
 
-	# Portage objet (E)
 	if event.is_action_pressed("interact"):
 		if carried_object:
 			carried_object.set("mode", 0) # RIGID
@@ -93,30 +89,35 @@ func _physics_process(delta):
 	velocity.x = direction.x * current_speed
 	velocity.z = direction.z * current_speed
 
-	# Crouch logique avec RayCast3D plafond
 	if Input.is_action_pressed("crouch"):
 		set_crouch(true)
 	elif is_crouched:
 		if not $RayCeiling.is_colliding():
 			set_crouch(false)
 
-	# Gravité
 	if not is_on_floor():
 		velocity.y -= gravity * delta
 	else:
 		velocity.y = 0.0
 
-	# Saut
 	if Input.is_action_just_pressed("jump") and is_on_floor():
 		velocity.y = jump_velocity
 
 	move_and_slide()
 
-	# Animation douce caméra
 	$Camera3D.position.y = lerp($Camera3D.position.y, camera_target_y, 0.2)
 
-	# Placement direct de l'objet porté
 	if carried_object:
+		# Vérifie la distance entre player et objet
+		var player_pos = global_transform.origin
+		var obj_pos = carried_object.global_transform.origin
+		if player_pos.distance_to(obj_pos) > carry_break_distance:
+			carried_object.set("mode", 0)
+			carried_object = null
+			is_rotating_object = false
+			Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
+			return
+
 		var anchor_pos = $Camera3D/CarryAnchor.global_transform.origin
 		var space_state = get_world_3d().direct_space_state
 		var found_shape = false
