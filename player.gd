@@ -15,6 +15,7 @@ var is_crouched := false
 var camera_target_y := stand_camera_y
 
 var carried_object : RigidBody3D = null
+var carried_object_last_valid_pos : Vector3
 
 func _ready():
 	Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
@@ -37,11 +38,12 @@ func _input(event):
 			var space_state = get_world_3d().direct_space_state
 			var query = PhysicsRayQueryParameters3D.create(from, to)
 			query.collide_with_areas = false
-			query.exclude = [self] # Ignore le collider du joueur
+			query.exclude = [self]
 			var result = space_state.intersect_ray(query)
 			if result and result.collider is RigidBody3D:
 				carried_object = result.collider
 				carried_object.set("mode", 2) # 2 = KINEMATIC
+				carried_object_last_valid_pos = carried_object.global_transform.origin
 
 func set_crouch(state : bool):
 	is_crouched = state
@@ -88,10 +90,36 @@ func _physics_process(delta):
 	# Animation douce caméra
 	$Camera3D.position.y = lerp($Camera3D.position.y, camera_target_y, 0.2)
 
-	# Carry objet devant la caméra
+	# Placement avancé de l'objet porté (shape cast et mémorisation dernière position valide)
 	if carried_object:
-		var target = $Camera3D/CarryAnchor.global_transform.origin
-		carried_object.global_transform.origin = carried_object.global_transform.origin.lerp(target, 0.5)
-		carried_object.global_transform.basis = Basis()
-		carried_object.linear_velocity = Vector3.ZERO
-		carried_object.angular_velocity = Vector3.ZERO
+		var anchor_pos = $Camera3D/CarryAnchor.global_transform.origin
+		var space_state = get_world_3d().direct_space_state
+		var found_shape = false
+
+		for c in carried_object.get_children():
+			if c is CollisionShape3D and c.shape is BoxShape3D:
+				var shape_query = PhysicsShapeQueryParameters3D.new()
+				shape_query.shape = c.shape
+				shape_query.transform = Transform3D(Basis(), anchor_pos)
+				shape_query.collision_mask = carried_object.collision_mask
+				shape_query.exclude = [self, carried_object]
+				var collisions = space_state.intersect_shape(shape_query)
+				if collisions.size() == 0:
+					# Aucun obstacle, avance vers l'anchor et mémorise cette position
+					carried_object.global_transform.origin = carried_object.global_transform.origin.lerp(anchor_pos, 0.5)
+					carried_object_last_valid_pos = carried_object.global_transform.origin
+				else:
+					# Collision : reste parfaitement à la dernière position valide
+					carried_object.global_transform.origin = carried_object_last_valid_pos
+				carried_object.global_transform.basis = Basis()
+				carried_object.linear_velocity = Vector3.ZERO
+				carried_object.angular_velocity = Vector3.ZERO
+				found_shape = true
+				break
+
+		if not found_shape:
+			carried_object.global_transform.origin = carried_object.global_transform.origin.lerp(anchor_pos, 0.5)
+			carried_object_last_valid_pos = carried_object.global_transform.origin
+			carried_object.global_transform.basis = Basis()
+			carried_object.linear_velocity = Vector3.ZERO
+			carried_object.angular_velocity = Vector3.ZERO
