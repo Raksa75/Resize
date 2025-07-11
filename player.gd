@@ -8,8 +8,13 @@ extends CharacterBody3D
 
 @export var crouch_camera_y := 0.4
 @export var stand_camera_y := 0.8
-@export var carry_range := 3.0   # Distance max pour attraper un objet
-@export var carry_break_distance := 4.0  # Distance max avant drop
+@export var carry_range := 3.0
+@export var carry_break_distance := 4.0
+
+@export var size_gun_range := 20.0
+@export var scale_min := 0.2
+@export var scale_max := 4.0
+@export var scale_speed := 2.0  # <-- plus c'est grand plus ça scale vite, essaye 2 à 10
 
 var rotation_x := 0.0
 var is_crouched := false
@@ -19,11 +24,43 @@ var carried_object : RigidBody3D = null
 var carried_object_last_valid_pos : Vector3
 var is_rotating_object := false
 
+var scaled_object : RigidBody3D = null
+var scale_target : float = 1.0
+
 func _ready():
 	Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
 	set_crouch(false)
 
 func _input(event):
+	# -------- Size Gun --------
+	if event is InputEventMouseButton:
+		if event.button_index == MOUSE_BUTTON_LEFT and event.pressed and not carried_object:
+			var from = $Camera3D.global_transform.origin
+			var to = from + -$Camera3D.global_transform.basis.z * size_gun_range
+			var space_state = get_world_3d().direct_space_state
+			var query = PhysicsRayQueryParameters3D.create(from, to)
+			query.collide_with_areas = false
+			query.exclude = [self]
+			var result = space_state.intersect_ray(query)
+			if result and result.collider is RigidBody3D:
+				scaled_object = result.collider
+				scale_target = scaled_object.scale.x  # on suppose scale uniforme
+			else:
+				scaled_object = null
+
+		if event.button_index == MOUSE_BUTTON_RIGHT and event.pressed and scaled_object:
+			scaled_object = null
+
+		# Scale fluide avec la molette
+		if scaled_object and carried_object != scaled_object and event.pressed:
+			if event.button_index == MOUSE_BUTTON_WHEEL_UP:
+				scale_target += 0.07 * scale_speed * event.factor
+			elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
+				scale_target -= 0.07 * scale_speed * event.factor
+
+			scale_target = clamp(scale_target, scale_min, scale_max)
+
+	# -------- Portage/rotation portage (le reste) --------
 	if event is InputEventMouseMotion:
 		if is_rotating_object and carried_object:
 			var rot_x = -event.relative.x * 0.01
@@ -39,17 +76,16 @@ func _input(event):
 			$Camera3D.rotation.x = rotation_x
 
 	if event is InputEventMouseButton:
-		if event.button_index == MOUSE_BUTTON_LEFT:
-			if event.pressed and carried_object:
-				is_rotating_object = true
-				Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
-			elif not event.pressed:
-				is_rotating_object = false
-				Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
+		if event.button_index == MOUSE_BUTTON_LEFT and event.pressed and carried_object:
+			is_rotating_object = true
+			Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
+		elif event.button_index == MOUSE_BUTTON_LEFT and not event.pressed:
+			is_rotating_object = false
+			Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
 
 	if event.is_action_pressed("interact"):
 		if carried_object:
-			carried_object.set("mode", 0) # RIGID
+			carried_object.set("mode", 0)
 			carried_object = null
 			is_rotating_object = false
 			Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
@@ -127,7 +163,7 @@ func _physics_process(delta):
 				var box_extents = box_shape.size * 0.5
 				var box_center = c.global_transform.origin
 				var box_top = box_center.y + box_extents.y
-				var player_bottom = global_transform.origin.y - 0.9 # ajuste à la moitié de la hauteur du player
+				var player_bottom = global_transform.origin.y - 0.9
 				if player_bottom > box_top - 0.1 and player_bottom < box_top + 0.4:
 					carried_object.set("mode", 0)
 					carried_object = null
@@ -136,7 +172,7 @@ func _physics_process(delta):
 					return
 				break
 
-		# Placement du cube
+		# Placement du cube SANS casser la scale
 		var anchor_pos = $Camera3D/CarryAnchor.global_transform.origin
 		var space_state = get_world_3d().direct_space_state
 		var box_found = false
@@ -146,15 +182,18 @@ func _physics_process(delta):
 				box_found = true
 				var shape_query = PhysicsShapeQueryParameters3D.new()
 				shape_query.shape = c.shape
-				shape_query.transform = Transform3D(carried_object.global_transform.basis, anchor_pos)
+				var cur_basis = carried_object.global_transform.basis
+				var cur_scale = carried_object.scale
+				var basis_scaled = Basis().scaled(cur_scale)
+				shape_query.transform = Transform3D(basis_scaled, anchor_pos)
 				shape_query.collision_mask = carried_object.collision_mask
 				shape_query.exclude = [self, carried_object]
 				var collisions = space_state.intersect_shape(shape_query)
 				if collisions.size() == 0:
-					carried_object.global_transform.origin = anchor_pos
+					carried_object.global_transform = Transform3D(basis_scaled, anchor_pos)
 					carried_object_last_valid_pos = anchor_pos
 				else:
-					carried_object.global_transform.origin = carried_object_last_valid_pos
+					carried_object.global_transform = Transform3D(basis_scaled, carried_object_last_valid_pos)
 				carried_object.linear_velocity = Vector3.ZERO
 				carried_object.angular_velocity = Vector3.ZERO
 				break
@@ -166,3 +205,15 @@ func _physics_process(delta):
 			is_rotating_object = false
 			Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
 			return
+
+	# ----------- SCALING FLUIDE DU SIZE GUN --------------
+	# On lerp le scale courant vers scale_target pour un effet fluide
+	if scaled_object and not carried_object:
+		var s = scaled_object.scale.x
+		var target = clamp(scale_target, scale_min, scale_max)
+		var new_s = lerp(s, target, 10 * delta) # plus le "10" est élevé, plus c'est rapide
+		new_s = clamp(new_s, scale_min, scale_max)
+		scaled_object.scale = Vector3(new_s, new_s, new_s)
+		for c in scaled_object.get_children():
+			if c is CollisionShape3D or c is MeshInstance3D:
+				c.scale = Vector3(new_s, new_s, new_s)

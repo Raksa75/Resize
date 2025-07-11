@@ -44,6 +44,8 @@ script = ExtResource("1_a202f")
 speed = 10.0
 mouse_sensitivity = 0.3
 stand_camera_y = 1.0
+scale_min = 1.0
+scale_max = 2.0
 
 [node name="Camera3D" type="Camera3D" parent="Player"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.618914, 0.0217127)
